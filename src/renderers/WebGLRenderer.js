@@ -6,7 +6,7 @@ import {
 	LinearEncoding,
 	NoToneMapping
 } from '../constants.js';
-import { MathUtils } from '../math/MathUtils.js';
+import * as MathUtils from '../math/MathUtils.js';
 import { DataTexture } from '../textures/DataTexture.js';
 import { Frustum } from '../math/Frustum.js';
 import { Matrix4 } from '../math/Matrix4.js';
@@ -116,11 +116,6 @@ function WebGLRenderer( parameters ) {
 
 	this.toneMapping = NoToneMapping;
 	this.toneMappingExposure = 1.0;
-
-	// morphs
-
-	this.maxMorphTargets = 8;
-	this.maxMorphNormals = 4;
 
 	// internal properties
 
@@ -262,7 +257,7 @@ function WebGLRenderer( parameters ) {
 
 	let extensions, capabilities, state, info;
 	let properties, textures, cubemaps, attributes, geometries, objects;
-	let programCache, materials, renderLists, renderStates, clipping;
+	let programCache, materials, renderLists, renderStates, clipping, shadowMap;
 
 	let background, morphtargets, bufferRenderer, indexedBufferRenderer;
 
@@ -295,6 +290,7 @@ function WebGLRenderer( parameters ) {
 		renderLists = new WebGLRenderLists( properties );
 		renderStates = new WebGLRenderStates( extensions, capabilities );
 		background = new WebGLBackground( _this, cubemaps, state, objects, _premultipliedAlpha );
+		shadowMap = new WebGLShadowMap( _this, objects, capabilities );
 
 		bufferRenderer = new WebGLBufferRenderer( _gl, extensions, info, capabilities );
 		indexedBufferRenderer = new WebGLIndexedBufferRenderer( _gl, extensions, info, capabilities );
@@ -305,6 +301,7 @@ function WebGLRenderer( parameters ) {
 		_this.extensions = extensions;
 		_this.properties = properties;
 		_this.renderLists = renderLists;
+		_this.shadowMap = shadowMap;
 		_this.state = state;
 		_this.info = info;
 
@@ -317,12 +314,6 @@ function WebGLRenderer( parameters ) {
 	const xr = new WebXRManager( _this, _gl );
 
 	this.xr = xr;
-
-	// shadow map
-
-	const shadowMap = new WebGLShadowMap( _this, objects, capabilities.maxTextureSize );
-
-	this.shadowMap = shadowMap;
 
 	// API
 
@@ -598,6 +589,9 @@ function WebGLRenderer( parameters ) {
 
 		xr.dispose();
 
+		xr.removeEventListener( 'sessionstart', onXRSessionStart );
+		xr.removeEventListener( 'sessionend', onXRSessionEnd );
+
 		animation.stop();
 
 	};
@@ -620,7 +614,19 @@ function WebGLRenderer( parameters ) {
 
 		_isContextLost = false;
 
+		const infoAutoReset = info.autoReset;
+		const shadowMapEnabled = shadowMap.enabled;
+		const shadowMapAutoUpdate = shadowMap.autoUpdate;
+		const shadowMapNeedsUpdate = shadowMap.needsUpdate;
+		const shadowMapType = shadowMap.type;
+
 		initGLContext();
+
+		info.autoReset = infoAutoReset;
+		shadowMap.enabled = shadowMapEnabled;
+		shadowMap.autoUpdate = shadowMapAutoUpdate;
+		shadowMap.needsUpdate = shadowMapNeedsUpdate;
+		shadowMap.type = shadowMapType;
 
 	}
 
@@ -933,8 +939,19 @@ function WebGLRenderer( parameters ) {
 
 	function onAnimationFrame( time ) {
 
-		if ( xr.isPresenting ) return;
 		if ( onAnimationFrameCallback ) onAnimationFrameCallback( time );
+
+	}
+
+	function onXRSessionStart() {
+
+		animation.stop();
+
+	}
+
+	function onXRSessionEnd() {
+
+		animation.start();
 
 	}
 
@@ -951,6 +968,9 @@ function WebGLRenderer( parameters ) {
 		( callback === null ) ? animation.stop() : animation.start();
 
 	};
+
+	xr.addEventListener( 'sessionstart', onXRSessionStart );
+	xr.addEventListener( 'sessionend', onXRSessionEnd );
 
 	// Rendering
 
@@ -980,12 +1000,6 @@ function WebGLRenderer( parameters ) {
 		}
 
 		if ( _isContextLost === true ) return;
-
-		// reset caching for this frame
-
-		bindingStates.resetDefaultState();
-		_currentMaterialId = - 1;
-		_currentCamera = null;
 
 		// update scene graph
 
@@ -1092,6 +1106,10 @@ function WebGLRenderer( parameters ) {
 		state.setPolygonOffset( false );
 
 		// _gl.finish();
+
+		bindingStates.resetDefaultState();
+		_currentMaterialId = - 1;
+		_currentCamera = null;
 
 		renderStateStack.pop();
 
@@ -1365,6 +1383,8 @@ function WebGLRenderer( parameters ) {
 
 			parameters.uniforms = programCache.getUniforms( material );
 
+			material.onBuild( parameters, _this );
+
 			material.onBeforeCompile( parameters, _this );
 
 			program = programCache.acquireProgram( parameters, programCacheKey );
@@ -1434,6 +1454,7 @@ function WebGLRenderer( parameters ) {
 		materialProperties.instancing = parameters.instancing;
 		materialProperties.numClippingPlanes = parameters.numClippingPlanes;
 		materialProperties.numIntersection = parameters.numClipIntersection;
+		materialProperties.vertexAlphas = parameters.vertexAlphas;
 
 	}
 
@@ -1447,6 +1468,7 @@ function WebGLRenderer( parameters ) {
 		const environment = material.isMeshStandardMaterial ? scene.environment : null;
 		const encoding = ( _currentRenderTarget === null ) ? _this.outputEncoding : _currentRenderTarget.texture.encoding;
 		const envMap = cubemaps.get( material.envMap || environment );
+		const vertexAlphas = material.vertexColors === true && object.geometry && object.geometry.attributes.color && object.geometry.attributes.color.itemSize === 4;
 
 		const materialProperties = properties.get( material );
 		const lights = currentRenderState.state.lights;
@@ -1501,6 +1523,10 @@ function WebGLRenderer( parameters ) {
 			} else if ( materialProperties.numClippingPlanes !== undefined &&
 				( materialProperties.numClippingPlanes !== clipping.numPlanes ||
 				materialProperties.numIntersection !== clipping.numIntersection ) ) {
+
+				needsProgramChange = true;
+
+			} else if ( materialProperties.vertexAlphas !== vertexAlphas ) {
 
 				needsProgramChange = true;
 
