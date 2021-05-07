@@ -18,15 +18,15 @@ function MenubarHelp( editor ) {
 
 	// Source code
 
-	var option = new UIRow();
-	option.setClass( 'option' );
-	option.setTextContent( strings.getKey( 'menubar/help/source_code' ) );
-	option.onClick( function () {
-
-		window.open( 'https://github.com/mrdoob/three.js/tree/master/editor', '_blank' );
-
-	} );
-	options.add( option );
+	// var option = new UIRow();
+	// option.setClass( 'option' );
+	// option.setTextContent( strings.getKey( 'menubar/help/source_code' ) );
+	// option.onClick( function () {
+	//
+	// 	window.open( 'https://github.com/mrdoob/three.js/tree/master/editor', '_blank' );
+	//
+	// } );
+	// options.add( option );
 
 	/*
 	// Icon
@@ -49,7 +49,8 @@ function MenubarHelp( editor ) {
 	option.setTextContent( strings.getKey( 'menubar/help/about' ) );
 	option.onClick( function () {
 
-		window.open( 'https://threejs.org', '_blank' );
+		//window.open( 'https://threejs.org', '_blank' );
+		alert( strings.getKey( 'menubar/help/about/msg' ) );
 
 	} );
 	options.add( option );

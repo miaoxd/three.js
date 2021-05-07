@@ -19,9 +19,9 @@ function SidebarSettings( editor ) {
 	// language
 
 	var options = {
+		zh: '中文',
 		en: 'English',
-		fr: 'Français',
-		zh: '中文'
+		fr: 'Français'
 	};
 
 	var languageRow = new UIRow();
