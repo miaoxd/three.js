@@ -450,35 +450,66 @@ class GLTFWriter {
 						binaryChunk
 					], { type: 'application/octet-stream' } );
 
-					const glbReader = new window.FileReader();
-					glbReader.readAsArrayBuffer( glbBlob );
-					glbReader.onloadend = function () {
+					if ( options.server ) {
 
-						onDone( glbReader.result );
+						const reader1 = new window.FileReader();
+						reader1.readAsDataURL( glbBlob );
+						reader1.onloadend = function () {
 
-					};
+							const base64data = reader1.result;
+							const requestOptions = {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify( { filename: options.filename, glbBlob: base64data } )
+							};
+							fetch( options.server, requestOptions )
+								.then( function ( res ) {
+
+									return res.json().then( ( data )=>{
+
+										console.log( data );
+
+									} ).catch( function ( e ) {
+
+										console.log( 'error' + e );
+
+									} );
+
+								} );
+
+						};
+
+					} else {
+
+						const glbReader = new window.FileReader();
+						glbReader.readAsArrayBuffer( glbBlob );
+						glbReader.onloadend = function () {
+
+							onDone( glbReader.result );
+
+						};
+
+					}
+
+
+
+				};
+
+			} else if ( json.buffers && json.buffers.length > 0 ) {
+
+				const reader = new window.FileReader();
+				reader.readAsDataURL( blob );
+				reader.onloadend = function () {
+
+					const base64data = reader.result;
+					json.buffers[ 0 ].uri = base64data;
+					onDone( json );
 
 				};
 
 			} else {
 
-				if ( json.buffers && json.buffers.length > 0 ) {
-
-					const reader = new window.FileReader();
-					reader.readAsDataURL( blob );
-					reader.onloadend = function () {
-
-						const base64data = reader.result;
-						json.buffers[ 0 ].uri = base64data;
-						onDone( json );
-
-					};
-
-				} else {
-
-					onDone( json );
-
-				}
+				onDone( json );
 
 			}
 

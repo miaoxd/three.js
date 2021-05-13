@@ -25,7 +25,9 @@ function Config() {
 		'settings/shortcuts/rotate': 'e',
 		'settings/shortcuts/scale': 'r',
 		'settings/shortcuts/undo': 'z',
-		'settings/shortcuts/focus': 'f'
+		'settings/shortcuts/focus': 'f',
+
+		'settings/server/uri/model/export': 'http://localhost:9092/wmms/api/models/save'
 	};
 
 	if ( window.localStorage[ name ] === undefined ) {

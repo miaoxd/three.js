@@ -248,12 +248,12 @@ function MenubarFile( editor ) {
 		var { GLTFExporter } = await import( '../../examples/jsm/exporters/GLTFExporter.js' );
 
 		var exporter = new GLTFExporter();
-
+		var fn = config.getKey( 'project/title' ) || 'untitled';
 		exporter.parse( scene, function ( result ) {
 
-			saveArrayBuffer( result, 'scene.glb' );
+			saveArrayBuffer( result, fn );
 
-		}, { binary: true, animations: animations } );
+		}, { binary: true, animations: animations, server: config.getKey( 'settings/server/uri/model/export' ), filename: fn } );
 
 	} );
 	options.add( option );

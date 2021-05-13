@@ -3621,7 +3621,13 @@ class GLTFParser {
 		}
 
 		return Promise.all( pending ).then( function () {
+			let light1 = new THREE.HemisphereLight( 0xffffff, 0x444444, 1.0 );
+			light1.position.set( 0, 1, 0 );
+			scene.add( light1 );
 
+			light1 = new THREE.DirectionalLight( 0xffffff, 1.0 );
+			light1.position.set( 0, 1, 0 );
+			scene.add( light1 );
 			return scene;
 
 		} );
